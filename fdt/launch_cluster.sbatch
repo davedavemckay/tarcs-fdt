@@ -23,5 +23,5 @@ source /cosma/apps/ip005/dc-mcka1/loadLSST.bash
 setup lsst_distrib
 date
 which python
-python /cosma/home/ip005/dc-mcka1/fdt/dask_cluster.py --account ip005     --queue cosma7     --workers-per-node 28     --threads-per-worker 1     --memory 500GB     --walltime 02:00:00     --num-nodes 5 --workdir /cosma/home/ip005/dc-mcka1/work --interface ibp94s0
+python /cosma/home/ip005/dc-mcka1/tarcs-fdt/fdt/dask_cluster.py --account ip005     --queue cosma7     --workers-per-node 28     --threads-per-worker 1     --memory 500GB     --walltime 02:00:00     --num-nodes 5 --workdir /cosma/home/ip005/dc-mcka1/work --interface ibp94s0
 date
