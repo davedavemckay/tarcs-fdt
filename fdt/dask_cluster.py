@@ -34,7 +34,7 @@ def launch_cluster(queue='', account='', workers_per_node=0, threads_per_worker=
     # Connect a Dask client to the cluster
     client = Client(cluster)
 
-    client.write_scheduler_file(f"{os.environ['WORK']}/dask_scheduler.json")
+    client.write_scheduler_file(f"{os.getcwd()}/dask_scheduler.json")
 
     print(f"Dashboard link: {client.dashboard_link}")
     print(f"Scheduler address: {cluster.scheduler_address}")
