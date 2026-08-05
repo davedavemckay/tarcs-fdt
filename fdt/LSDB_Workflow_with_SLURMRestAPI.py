@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# Converted from TARCs LSDB_Workflow_with_SLURMRestAPI.ipynb to .py on 2026-08-06
+
 # ## SLURM API / Rubin DP1 Workflow Example
 
 # ### Table of Contents
@@ -46,19 +48,18 @@
 # 
 # For reference, see https://lsdb.io/
 
-# In[ ]:
 
 
 import lsdb
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 import pandas as pd
-get_ipython().run_line_magic('matplotlib', 'widget')
+# get_ipython().run_line_magic('matplotlib', 'widget')
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from mpl_toolkits.axes_grid1 import ImageGrid
 from matplotlib.animation import FuncAnimation
-from IPython.display import HTML, Image
+# from IPython.display import HTML, Image, display
 import numpy as np
 
 
@@ -66,7 +67,6 @@ import numpy as np
 
 # For reference, see https://slurm.schedmd.com/rest_api.html
 
-# In[11]:
 
 
 # system
@@ -76,7 +76,7 @@ from pathlib import Path
 from upath import UPath
 import getpass
 # s3
-import s3fs
+# import s3fs # this example will not use s3
 # slurm
 import requests
 import json
@@ -88,10 +88,6 @@ from dask.distributed import Client, as_completed, wait, get_client
 
 
 # A few settings to keep the cell outputs clean
-
-# In[6]:
-
-
 dask.config.set({"logging.distributed": "critical"})
 
 import logging
@@ -109,27 +105,24 @@ warnings.filterwarnings("ignore", message="UserWarning: Dask currently has limit
 
 # The "local" Dask Cluster is accessed via the Client object, below. This is a single worker with 8 threads that will run in the background of this Notebook.
 
-# In[4]:
 
 
 client = Client(n_workers=1, threads_per_worker=8, memory_limit='14GiB')
-client
+print(client)
 
 
 # This Cluster can be monitored by clicking the link below.
 
-# In[5]:
 
 
 url = f'https://rsp.lsst.ac.uk/nb/user/{getpass.getuser()}/{client.dashboard_link}'
-url
+print(url)
 
 
 # ### 2.2. SLURMRestAPI Basics
 
 # To access the SLURMRestAPI, we use the Python `requests` and `json` packages, plus the `os` package to access the credentials file and work with environment variables.
 
-# In[7]:
 
 
 with open(os.path.expanduser("~/.tokens/slurm"), "r") as f:
@@ -148,7 +141,6 @@ headers = {
 
 # To confirm the setup, we'll get some basic user stats
 
-# In[14]:
 
 
 response = requests.get(f"{SLURM_addr}/diag", headers=headers)
@@ -157,7 +149,6 @@ my_stats = jmespath.search(f"statistics.rpcs_by_user[?user=='{cirrus_username}']
 print(json.dumps(my_stats[0], indent=2))
 
 
-# In[ ]:
 
 
 
@@ -169,7 +160,6 @@ print(json.dumps(my_stats[0], indent=2))
 # 
 # It is worth noting that the SLURM API documentation (https://slurm.schedmd.com/rest_api.html) labels some fields as "optional" - this means it is optional to the API call type, but not necessarily optional to the target compute cluster. Comments in the cell below mark required fields for Cirrus.
 
-# In[ ]:
 
 
 def submit_job(
@@ -268,7 +258,6 @@ def submit_job(
 
 # The below reads EC2 credentials produced through the Openstack WebUI. We will access an Object Store Container, `tarcs`.
 
-# In[9]:
 
 
 with open(os.path.expanduser('~/.aws/credentials'), 'r') as credf:
@@ -283,10 +272,9 @@ tarcs_s3 = s3fs.S3FileSystem(
 bucket_name = 'tarcs'
 
 
-# In[10]:
 
 
-tarcs_s3.ls(bucket_name)
+print(tarcs_s3.ls(bucket_name))
 
 
 # Now that our data is uploaded, we will launch a Dask Cluster on Cirrus.
@@ -299,7 +287,6 @@ tarcs_s3.ls(bucket_name)
 
 # As we will reuse variable names, such as `script`, it's best to change values and submit in the same cell.
 
-# In[11]:
 
 
 walltime_hours = 2
@@ -328,21 +315,19 @@ date
 name = "DaskShd"
 account = "dc164"
 dask_clust_jobid = submit_job(script=script, name=name, account=account, time_limit_number=walltime_hours*60+walltime_minutes)
-dask_clust_jobid
+print(dask_clust_jobid)
 
 
 # ### 2.5. More SLURMRestAPI tips
 
 # We can monitor the Dask Scheduler job by querying SLURMdb with `dask_clust_jobid`
 
-# In[12]:
 
 
 dask_clust_job_info = requests.get(f"{SLURMdb_addr}/job/{dask_clust_jobid}", headers=headers)
 print(json.dumps(dask_clust_job_info.json(), indent=2))
 
 
-# In[13]:
 
 
 # Or, for a more readable output:
@@ -353,14 +338,12 @@ print(f"Dask Scheduler, job {dask_clust_jobid}, is {dask_clust_job_info.json()['
 # 
 # This is particularly useful when submitting multiple jobs by looping over a local `List`, which we'll see later.
 
-# In[14]:
 
 
 all_slurm_job_states = requests.get(f"{SLURM_addr}/jobs/state", headers=headers)
 print(json.dumps(all_slurm_job_states.json(), indent=2))
 
 
-# In[15]:
 
 
 my_job = [ j for j in all_slurm_job_states.json()['jobs'] if j['job_id'] == str(dask_clust_jobid) ][0]
@@ -379,7 +362,6 @@ print(f"Dask Scheduler, job {dask_clust_jobid}, is {my_job['state'][0]}.")
 # 
 # This is equivalent to running `squeue` (or `scontrol` on all jobs!) as it gives all information on every PENDING or RUNNING, job.
 
-# In[16]:
 
 
 all_jobs = requests.get(f"{SLURM_addr}/jobs", headers=headers)
@@ -387,7 +369,6 @@ all_jobs = requests.get(f"{SLURM_addr}/jobs", headers=headers)
 
 # The response to this query is also large, and utilising the JSON output, a large Python `List` of `Dict` objects representing each job, will be slow, so here we use Pandas to take advantage of its pre-compiled, vectorised operations.
 
-# In[17]:
 
 
 jobs = pd.DataFrame.from_dict(all_jobs.json().get("jobs", []))
@@ -395,20 +376,18 @@ jobs = pd.DataFrame.from_dict(all_jobs.json().get("jobs", []))
 del all_jobs
 
 
-# In[18]:
 
 
 # We will further reduce the load on memory by reducing the size of the DataFrame to just the information we want
 jobs = jobs[['account','job_id','name','job_state','cpus','node_count','exclusive','user_name']] # limit to the columns we need
 jobs = jobs[jobs['user_name'] == cirrus_username] # filter by user name
 jobs['job_state'] = [ j[0] for j in jobs['job_state'].values ] # unpack job_state values, which are returns as lists of single strings, for easier use downstream
-jobs
+print(jobs)
 
 
-# In[19]:
 
 
-jobs[jobs['job_state'].isin(['RUNNING','PENDING'])]
+print(jobs[jobs['job_state'].isin(['RUNNING','PENDING'])])
 
 
 # Above, jobs with a "`[RUNNING]`" job state and name "`dask-worker`" represent our Dask Cluster worker nodes and "`DaskShd`" is the Dask Scheduler.
@@ -416,13 +395,11 @@ jobs[jobs['job_state'].isin(['RUNNING','PENDING'])]
 # As the "DaskShd" job is running, its scheduler info will have been publised to S3.
 # Note: this is also written to a file on Cirrus where other jobs can pick it up.
 
-# In[22]:
 
 
-tarcs_s3.glob('tarcs/*')
+print(tarcs_s3.glob('tarcs/*'))
 
 
-# In[23]:
 
 
 dl_response = tarcs_s3.get('tarcs/dask_scheduler_info.yaml', 'dask_scheduler_info.yaml')
@@ -432,25 +409,22 @@ if dl_response == [None]:
 
 # We can use the Python `yaml` package to read this information into a `dict`
 
-# In[24]:
 
 
 dask_scheduler_info = yaml.safe_load(open('dask_scheduler_info.yaml'))
-dask_scheduler_info
+print(dask_scheduler_info)
 
 
-# In[25]:
 
 
 dask_cluster_ip = dask_scheduler_info['dask_scheduler_address'].split('//')[-1]
-dask_cluster_ip
+print(dask_cluster_ip)
 
 
 # _Note: Monitoring the Dask Dashboard on Cirrus requires port forwarding through SSH, and so is beyond the scope of this tutorial._
 # 
 # However, if you do have SSH access, follow the below:
 
-# In[26]:
 
 
 dashboard_addr = dask_scheduler_info['dask_dashboard_address'].split('//')[-1].split('/')[0]
@@ -463,7 +437,6 @@ print('Cirrus Dask Dashboard link: http://127.0.0.1:8787/status')
 
 # You will now have two browser windows showing Dask Dashboards:
 
-# In[27]:
 
 
 print(f'https://rsp.lsst.ac.uk/nb/user/{getpass.getuser()}/{client.dashboard_link} - the Dask Cluster running in this RSP Notebooks session')
@@ -478,33 +451,29 @@ print('http://127.0.0.1:8787/status - The Dask Cluster running on Cirrus')
 
 # Set the base path to the LSDB-formatted DP1 data in the RSP.
 
-# In[28]:
 
 
 base_path = UPath("/rubin/lsdb_data")
 
 
-# In[29]:
 
 
 object_cat = lsdb.open_catalog(base_path / "object_collection")
-object_cat
+print(object_cat)
 
 
 # Note: only 42 of 1304 columns have been loaded:
 
-# In[30]:
 
 
-object_cat.columns
+print(object_cat.columns)
 
 
 # `object_cat.all_columns` shows the full list:
 
-# In[31]:
 
 
-object_cat.all_columns
+print(object_cat.all_columns)
 
 
 # We will search for and select columns that contain PSF fluxes converted to magnitudes.
@@ -512,25 +481,21 @@ object_cat.all_columns
 # The above takes around 5 seconds, with the longest cell run being the `lsdb.open_catalog` cell.
 # We will now run an `lsdb.open_catalog` step with our `psfMag_columns` to give `object_cat_selected_columns`, which is slightly faster.
 
-# In[32]:
 
 
 psfMag_columns = ['coord_dec', 'coord_decErr', 'coord_ra', 'coord_raErr', 'g_psfFlux', 'g_psfFluxErr', 'g_psfMag', 'g_psfMagErr']
 
 
-# In[33]:
 
 
 object_cat_selected_columns = lsdb.open_catalog(base_path / "object_collection", columns=psfMag_columns)
 
 
-# In[34]:
 
 
-object_cat_selected_columns.columns
+print(object_cat_selected_columns.columns)
 
 
-# In[35]:
 
 
 assert all(object_cat_selected_columns.columns) == all(object_cat_selected_columns.all_columns)
@@ -549,7 +514,6 @@ assert all(object_cat_selected_columns.columns) == all(object_cat_selected_colum
 # - Alternatively, we could just upload the whole catalog to S3 - we will see an example of this later
 # - Note: LSDB writes in heirarchical parquet format, so the output will be a folder with many subfolders
 
-# In[36]:
 
 
 # Only run if local copy doesn't exist
@@ -563,7 +527,6 @@ else:
 # 
 # Note: this is not a thorough test of whether the data already exists on S3, just a quick check for the top-level folder name, in reality, one should ensure all expected files are present.
 
-# In[37]:
 
 
 if 'tarcs/psfMag' not in tarcs_s3.ls(bucket_name):
@@ -578,7 +541,6 @@ else:
 
 # #### Prepare SLURM script and submit via the SLURMRestAPI
 
-# In[38]:
 
 
 ## Cone search parameters
@@ -592,7 +554,6 @@ upload_prefix = 'psfMag_cone_search'
 cone_search_columns = list(object_cat_selected_columns.columns)
 
 
-# In[39]:
 
 
 script = f"""#!/bin/bash --login
@@ -627,13 +588,11 @@ cone_search_jobid = submit_job(
 )
 
 
-# In[40]:
 
 
-cone_search_jobid
+print(cone_search_jobid)
 
 
-# In[47]:
 
 
 cone_search_job_info = requests.get(f"{SLURMdb_addr}/job/{cone_search_jobid}", headers=headers)
@@ -644,17 +603,20 @@ print(f"Cone Search, job {cone_search_jobid}, is {cone_search_job_info.json()['j
 
 # ### 3.3. Retrieving outputs and logs via S3
 
-# In[48]:
 
 
 plot_path = f'{upload_prefix}/cone_search_results-{ra}_{dec}_{r_arcsec:.1f}.png'
 tarcs_s3.get(f'tarcs/{plot_path}',plot_path)
 
 
-# In[49]:
 
 
-Image(filename=plot_path) 
+im = plt.imread(plot_path)
+plt.figure()
+plt.imshow(im)
+plt.axis('off')
+plt.savefig(plot_path)
+plt.close()
 
 
 # For interest: the Rubin Observatory Commissioning Camera (ComCam), on which DP1 was based, has a field-of-view of around 40 x 40 arc minutes, producing 144 megapixel images (~ 1/21 the size of an LSSTCam image at 3.2 gigapixels).
@@ -665,7 +627,6 @@ Image(filename=plot_path)
 # 
 # - Note: this is submitted with a dependency on the cone search job (`afterany:<jobid>`) to ensure it runs after the output is complete.
 
-# In[50]:
 
 
 prev_jobid = cone_search_jobid
@@ -697,10 +658,9 @@ upload_jobid = submit_job(
     comment="Uploading logs from previous job",
     dependency=f"afterany:{prev_jobid}",
 )
-upload_jobid
+print(upload_jobid)
 
 
-# In[61]:
 
 
 upload_job_info = requests.get(f"{SLURMdb_addr}/job/{upload_jobid}", headers=headers)
@@ -709,21 +669,18 @@ print(f"LogUploader, job {upload_jobid}, is {upload_job_info.json()['jobs'][0].g
 
 # Continue once `COMPLETED`
 
-# In[62]:
 
 
 tarcs_s3.get(f'tarcs/jobid/{prev_jobid}_logs.tar.gz', f'{prev_jobid}_logs.tar.gz')
 
 
-# In[63]:
 
 
-ls {prev_jobid}_logs.tar.gz
+# ls {prev_jobid}_logs.tar.gz
 
 
 # We can get a quick view of this log by running a shell command:
 
-# In[64]:
 
 
 get_ipython().system('tar xvfz {prev_jobid}_logs.tar.gz && cat slurm-{prev_jobid}.out')
@@ -738,13 +695,11 @@ get_ipython().system('tar xvfz {prev_jobid}_logs.tar.gz && cat slurm-{prev_jobid
 # 
 # - the first cone search used a radius of 1 arc hours - we will gradually narrow to 0.01 arc hours (36 arc seconds, ~180 ComCam pixels)
 
-# In[65]:
 
 
 radii = [ r * 3600 for r in [0.75, 0.5, 0.25, 0.1, 0.075, 0.05, 0.025, 0.01] ]
+print(radii)
 
-
-# In[87]:
 
 
 # This will run simultaneously as separate jobs, and their compute tasks will be executed by the Dask cluster
@@ -784,7 +739,6 @@ for r_arcsec in radii:
     )
 
 
-# In[90]:
 
 
 all_slurm_job_states = requests.get(f"{SLURM_addr}/jobs/state", headers=headers)
@@ -800,15 +754,13 @@ for job_id in cone_search_jobids:
 
 # Here, for checking the plots have been uploaded, we use one S3 enpoint query (`tarcs_s3.glob`) and loop over it to find PNG files, as opposed to looping over the PNG file names and using multiple S3 endpoint queries with `tarcs_s3.ls`.
 
-# In[91]:
 
 
-[ o for o in tarcs_s3.glob(f'tarcs/{upload_prefix}/**') if '.png' in o ]
+print([ o for o in tarcs_s3.glob(f'tarcs/{upload_prefix}/**') if '.png' in o ])
 
 
 # For download, it is necessary to use multiple S3 endpoint queries.
 
-# In[92]:
 
 
 for r in radii:
@@ -818,20 +770,17 @@ for r in radii:
 # - Since we've now run a set of cone searches with a range of radii, we can make a pseudo "zoom" animation!
 # - First, we will add the 1 arc hour radius into the `radii` list, then we will produce animation frames using the list.
 
-# In[93]:
 
 
 if 1.0*3600 not in radii:
     radii.insert(0, 1.0*3600)
 
 
-# In[94]:
 
 
-radii
+print(radii)
 
 
-# In[96]:
 
 
 fig, ax = plt.subplots()
@@ -847,7 +796,7 @@ def animate(r):
     return [im_display]
 
 anim = FuncAnimation(fig, animate, frames=radii, interval=300)
-HTML(anim.to_jshtml(default_mode='reflect'))
+plt.savefig('zoom.png')
 # anim.save('zoom.gif')
 
 
@@ -860,7 +809,6 @@ HTML(anim.to_jshtml(default_mode='reflect'))
 # 
 # For this we will look at the `dia_object_collection`, where a DIA Object is defined as: an astrophysical transient or variable object at a static sky coordinate; these are objects at DIA Sources, which are sources that appear in difference images, through Difference Image Analysis (DIA).
 
-# In[97]:
 
 
 known_sn = 611_255_759_837_069_401
@@ -870,7 +818,6 @@ known_sn = 611_255_759_837_069_401
 
 # Preparation of data for light curve calcultion can be slow, so we will stage the whole collection to S3 to have is next to our compute.
 
-# In[98]:
 
 
 prefix = 'dia_object_collection'
@@ -885,7 +832,6 @@ else:
 
 # A cone search for `diaObjectId` is fast if the radius is kept relatively small.
 
-# In[99]:
 
 
 dia_object_cat = lsdb.open_catalog(base_path / "dia_object_collection")
@@ -893,7 +839,6 @@ dia_object_cat = lsdb.open_catalog(base_path / "dia_object_collection")
 
 # ### 4.3. Notebook (cone search) and Job 4 Cirrus (6 light curves)
 
-# In[100]:
 
 
 cs_results = dia_object_cat.cone_search(ra, dec, 36.)['diaObjectId'].compute()
@@ -901,30 +846,26 @@ cs_results = dia_object_cat.cone_search(ra, dec, 36.)['diaObjectId'].compute()
 
 # At this radius, 92 objects are found - meaning 92 objects have been identified as having significant difference images
 
-# In[101]:
 
 
-cs_results.values
+print(cs_results.values)
 
 
 # We will compute the light curves our known SN plus for the first 5 DIA objects found in our cone search.
 
-# In[102]:
 
 
 sn_search_ids = list(cs_results.values[:5])
 
 
-# In[103]:
 
 
 sn_search_ids.insert(0, known_sn)
-sn_search_ids
+print(sn_search_ids)
 
 
 # Submit light curve calculation jobs on Cirrus
 
-# In[104]:
 
 
 download_prefix = 'dia_object_collection' # Note: only data missing on Cirrus will be downloaded
@@ -959,10 +900,9 @@ for _id in sn_search_ids:
         account=account,
         time_limit_number=60
     ))
-dia_search_jobids
+print(dia_search_jobids)
 
 
-# In[108]:
 
 
 all_slurm_job_states = requests.get(f"{SLURM_addr}/jobs/state", headers=headers)
@@ -974,26 +914,22 @@ for job_id in dia_search_jobids:
 
 # Once the above is `COMPLETED`, the plot can be downloaded from S3 storage as below.
 
-# In[109]:
 
 
-sn_search_ids
+print(sn_search_ids)
 
 
-# In[110]:
 
 
-tarcs_s3.glob(f'{bucket_name}/{upload_prefix}/*')
+print(tarcs_s3.glob(f'{bucket_name}/{upload_prefix}/*'))
 
 
-# In[111]:
 
 
 dl = [tarcs_s3.get(f'{bucket_name}/{upload_prefix}/light_curve_{_id}.png', f'{upload_prefix}/light_curve_{_id}.png') for _id in sn_search_ids]
-dl
+print(dl)
 
 
-# In[112]:
 
 
     # images.append()
@@ -1017,7 +953,8 @@ for i, ax, im in zip([x for x in range(6)], grid, ims):
     else:
         ax.set_title('Transient Object')
 
-plt.show()
+plt.savefig(f'{upload_prefix}/light_curves_grid.png')
+plt.close()
 
 
 # ### 5. Clean-up
@@ -1028,14 +965,12 @@ plt.show()
 #   - This is done using an HTTP DELETE request
 # - It is also good practice to check for any jobs that need to be cleaned up.
 
-# In[113]:
 
 
 dask_clust_job_info = requests.get(f"{SLURMdb_addr}/job/{dask_clust_jobid}", headers=headers)
 print(f"Dask Scheduler, job {dask_clust_jobid}, is {dask_clust_job_info.json()['jobs'][0].get('state').get('current')[0]}.")
 
 
-# In[119]:
 
 
 all_jobs = requests.get(f"{SLURM_addr}/jobs", headers=headers)
@@ -1043,19 +978,17 @@ jobs = pd.DataFrame.from_dict(all_jobs.json().get("jobs", []))
 del all_jobs
 
 
-# In[120]:
 
 
 jobs = jobs[['account','job_id','name','job_state','user_name']] # limit to the columns we need
 jobs['job_state'] = [ j[0] for j in jobs['job_state'].values ] # unpack job_state values, which are returns as lists of single strings, for easier use downstream
 jobs = jobs[jobs['user_name'] == cirrus_username] # filter by username and job_state
 jobs = jobs[jobs['job_state'].isin(['RUNNING','PENDING'])]
-jobs
+print(jobs)
 
 
 # **WARNING:** the below will kill _all_ of your jobs - ensure this is what you want!
 
-# In[121]:
 
 
 for jobid in jobs['job_id']:
@@ -1065,7 +998,6 @@ for jobid in jobs['job_id']:
 
 # _If there are no errors or warnings, the delete command has worked. We can verify this by checking the current job state, which will be "CANCELLED" once the `slurmrestd` has cancelled the job._
 
-# In[122]:
 
 
 for jobid in jobs['job_id']:
